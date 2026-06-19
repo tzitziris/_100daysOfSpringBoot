@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <title>Dynamic Dropdown Demo</title>
+    <style>
+        body { font-family: sans-serif; padding: 24px; }
+        td { padding: 8px; }
+        select { min-width: 200px; padding: 4px; }
+    </style>
+</head>
+<body>
+
+<h2>Dynamic Dropdown (Νομός → Επαρχία → Χωριό)</h2>
+
+<table border="1" cellpadding="10">
+    <tr>
+        <td>District:</td>
+        <td>
+            <select id="districtList">
+                <option disabled selected>Διάλεξε νομό</option>
+            </select>
+        </td>
+    </tr>
+    <tr>
+        <td>Taluk:</td>
+        <td>
+            <select id="talukList">
+                <option disabled selected>Διάλεξε επαρχία</option>
+            </select>
+        </td>
+    </tr>
+    <tr>
+        <td>Village:</td>
+        <td>
+            <select id="villageList">
+                <option disabled selected>Διάλεξε χωριό</option>
+            </select>
+        </td>
+    </tr>
+    <tr>
+        <td>Street:</td>
+        <td>
+            <select id="streetList">
+                <option disabled selected>Διάλεξε δρόμο</option>
+            </select>
+        </td>
+    </tr>
+</table>
+
+<script>
+    // Συντομεύσεις για τα 3 dropdowns
+    const districtEl = document.getElementById('districtList');
+    const talukEl    = document.getElementById('talukList');
+    const villageEl  = document.getElementById('villageList');
+    const streetEl   = document.getElementById('streetList');
+
+    // Βοηθητική: αδειάζει ένα dropdown και βάζει ένα placeholder.
+    function reset(selectEl, placeholder) {
+        selectEl.innerHTML = '<option disabled selected>' + placeholder + '</option>';
+    }
+
+    // ----- 1) Μόλις φορτώσει η σελίδα: φέρε ΟΛΟΥΣ τους νομούς -----
+    fetch('/api/districts')
+        .then(res => res.json())                 // διάβασε το JSON της απάντησης
+        .then(list => {
+            list.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.distcode;          // η τιμή = ο κωδικός
+                opt.textContent = d.distcode + ' -- ' + d.name;
+                districtEl.appendChild(opt);
+            });
+        });
+
+    // ----- 2) Όταν αλλάξει ο νομός: φέρε τις επαρχίες του -----
+    districtEl.addEventListener('change', () => {
+        reset(talukEl, 'Διάλεξε επαρχία');       // καθάρισε επαρχία...
+        reset(villageEl, 'Διάλεξε χωριό');       // ...χωριό...
+        reset(streetEl, 'Διάλεξε δρόμο');        // ...και δρόμο
+
+        const distcode = districtEl.value;
+        fetch('/api/taluks?distcode=' + distcode)
+            .then(res => res.json())
+            .then(list => {
+                list.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.talukcode;
+                    opt.textContent = t.talukcode + ' -- ' + t.name;
+                    talukEl.appendChild(opt);
+                });
+            });
+    });
+
+    // ----- 3) Όταν αλλάξει η επαρχία: φέρε τα χωριά της -----
+    talukEl.addEventListener('change', () => {
+        reset(villageEl, 'Διάλεξε χωριό');
+        reset(streetEl, 'Διάλεξε δρόμο');        // καθάρισε και τον δρόμο
+
+        const distcode  = districtEl.value;
+        const talukcode = talukEl.value;
+        fetch('/api/villages?distcode=' + distcode + '&talukcode=' + talukcode)
+            .then(res => res.json())
+            .then(list => {
+                list.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.villagecode;
+                    opt.textContent = v.villagecode + ' -- ' + v.name;
+                    villageEl.appendChild(opt);
+                });
+            });
+    });
+
+    // ----- 4) Όταν αλλάξει το χωριό: φέρε τους δρόμους του -----
+    villageEl.addEventListener('change', () => {
+        reset(streetEl, 'Διάλεξε δρόμο');
+
+        const distcode    = districtEl.value;
+        const talukcode   = talukEl.value;
+        const villagecode = villageEl.value;
+        fetch('/api/streets?distcode=' + distcode +
+              '&talukcode=' + talukcode +
+              '&villagecode=' + villagecode)
+            .then(res => res.json())
+            .then(list => {
+                list.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.streetcode;
+                    opt.textContent = s.streetcode + ' -- ' + s.name;
+                    streetEl.appendChild(opt);
+                });
+            });
+    });
+</script>
+
+</body>
+</html>
